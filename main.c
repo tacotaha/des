@@ -10,7 +10,8 @@
 #define LEFT (RIGHT << 32)
 #define BLK_SIZE (sizeof(uint64_t) << 3)
 
-#define DEBUG 1
+#define KEY_ROUNDS 16
+#define DEBUG 0
 
 const int p_0[] = { 57, 49, 41, 33, 25, 17, 9, 1, 58, 50, 42, 34, 26,
   18, 10, 2, 59, 51, 43, 35, 27, 19, 11, 3, 60, 52,
@@ -58,9 +59,9 @@ uint64_t permute(uint64_t b, const int *permutation) {
   return result;
 }
 
-void gen_keys(uint64_t key, uint64_t ** keys) {
+void gen_keys(uint64_t key, uint64_t *keys) {
   uint32_t left, right;
-  uint64_t c_0 = 0, d_0 = 0, key_i = 0, p0, p1;
+  uint64_t c_0 = 0, d_0 = 0, p0;
 
   p0 = permute(key, p_0);
   left = p0 & 0xfffffffLL;
@@ -83,25 +84,23 @@ void gen_keys(uint64_t key, uint64_t ** keys) {
   c_0 = left;
   d_0 = right;
 
-  for (int i = 0; i < 16; ++i) {
+  for (int i = 0; i < KEY_ROUNDS; ++i) {
     for (int j = 0; j < key_sched[i]; ++j) {
       cshift(&c_0, 28);
       cshift(&d_0, 28);
     }
 
-    key_i = 0;
-    key_i |= c_0;
-    key_i |= d_0 << 28;
-
-    p1 = permute(key_i, p_1);
+    keys[i] = 0;
+    keys[i] |= c_0;
+    keys[i] |= d_0 << 28;
+    keys[i] = permute(keys[i], p_1);
 
 #if DEBUG
     printf("============================\n");
     printf("Iteration: %d\n", i);
     dump_bits(c_0, 28);
     dump_bits(d_0, 28);
-    dump_bits(key_i, 56);
-    dump_bits(p1, 48);
+    dump_bits(keys[i], 56);
     printf("============================\n");
 #endif
   }
@@ -111,7 +110,7 @@ void gen_keys(uint64_t key, uint64_t ** keys) {
 int main(int argc, char **argv) {
   int size, fd;
   struct stat st;
-  uint64_t *base = NULL;
+  uint64_t *keys, *base = NULL;
   char *payload = argv[argc > 1];
 
   fd = open(payload, O_RDONLY);
@@ -124,13 +123,19 @@ int main(int argc, char **argv) {
   base = mmap(0, size, PROT_READ, MAP_PRIVATE, fd, 0);
   close(fd);
 
-  /*
-     for(int i = 0; i < size / sizeof(*base); ++i)
-     printf("0x%llx ", base[i]);
-   */
+  printf("Base addr = %p\n", (void *) base);
 
-  printf("\nBase addr = %p\n", (void *) base);
-  gen_keys(0x8FFB3DD99EEA2CC8, NULL);
+  keys = calloc(1, sizeof(uint64_t) * KEY_ROUNDS);
+  if(!keys) return -1;
+
+  gen_keys(0x8FFB3DD99EEA2CC8, keys);
+
+  for(int i = 0; i < KEY_ROUNDS; ++i){
+      printf("Key %02d: ", i);
+      dump_bits(keys[i], 48);
+  }
+
+  free(keys);
 
   return 0;
 }
