@@ -27,8 +27,8 @@ void gen_subkeys(uint64_t key, uint64_t * keys) {
   uint64_t c_0 = 0, d_0 = 0, p0;
 
   p0 = permute(key, p_0, 56);
-  left = p0 & RIGHT;
-  right = (p0 & LEFT) >> 28;
+  left = p0 & 0xfffffffULL;
+  right = (p0 & (0xfffffffULL << 28)) >> 28;
 
 #if DEBUG
   printf("Key = ");
@@ -68,4 +68,25 @@ void gen_subkeys(uint64_t key, uint64_t * keys) {
 #endif
   }
 
+}
+
+uint64_t f(uint64_t block, uint64_t subkey) {
+  uint64_t res = permute(block, e_table, 48);
+  return res;
+}
+
+void encrypt(uint64_t msg, uint64_t key, uint64_t * keys) {
+  uint64_t left, right, i_perm, res;
+
+  i_perm = permute(msg, p_2, 64);
+  left = i_perm & 0xffffffff;
+  right = (i_perm & (0xffffffffULL << 32)) >> 32;
+
+  for (int i = 0; i < KEY_ROUNDS; ++i) {
+    res = f(right, keys[i]);
+    res ^= keys[i];
+    dump_bits(res, 48);
+  }
+
+  dump_bits(left, 32);
 }
