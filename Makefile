@@ -16,7 +16,7 @@ des.o: des.h des.c
 	$(CC) $(CFLAGS) -c des.c -o des.o
 
 clean:
-	rm -f $(EXEC) *.o *~
+	rm -f $(EXEC) *.o *~ *.dec
 
 format:
 	find . -name "*.c" | xargs indent -par -br -brf -brs -kr -ci2 -cli2 -i2 -l80 -nut

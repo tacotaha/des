@@ -5,15 +5,18 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <inttypes.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "des.h"
 #include "perms.h"
 
 int main(int argc, char **argv) {
-  int size, fd;
+  int size, blks, fd;
   struct stat st;
-  uint64_t enc, msg, key, *keys, *base = NULL;
-  char *payload = argv[argc > 1];
+  uint64_t enc, key, *keys, *base;
+  char *payload = argv[1];
+  char *out = argv[2];
 
   fd = open(payload, O_RDONLY);
   if (fd < 0)
@@ -22,13 +25,16 @@ int main(int argc, char **argv) {
   stat(payload, &st);
   size = st.st_size;
   size += (size % 8) ? 8 - (size % 8) : 0;
+  blks = size / sizeof(uint64_t);
 
   printf("Size = %d, Blks = %ld\n", size, size / sizeof(uint64_t));
 
   base = mmap(0, size, PROT_READ, MAP_PRIVATE, fd, 0);
   close(fd);
 
-  printf("Base addr = %p\n", (void *) base);
+  fd = open(out, O_RDWR | O_CREAT, 0600);
+  if (fd < 0)
+    return fd;
 
   keys = calloc(1, sizeof(uint64_t) * KEY_ROUNDS);
   if (!keys)
@@ -42,11 +48,12 @@ int main(int argc, char **argv) {
     dump_bits(keys[i], 48);
   }
 
-  msg = 0x123456789ABCDEFULL;
-  enc = encrypt(msg, key, keys);
+  for (int i = 0; i < blks; ++i) {
+    enc = encrypt(base[i], key, keys);
+    write(fd, &enc, sizeof(uint64_t));
+  }
 
-  printf("Encrypted = 0x%lx\n", enc);
-
+  close(fd);
   free(keys);
 
   return 0;
