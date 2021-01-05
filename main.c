@@ -12,11 +12,26 @@
 #include "perms.h"
 
 int main(int argc, char **argv) {
-  int size, blks, fd;
   struct stat st;
-  uint64_t enc, key, *keys, *base;
-  char *payload = argv[1];
-  char *out = argv[2];
+  int size, blks, fd, enc;
+  char *kfd, *payload, *out;
+  uint64_t res, key, *keys, *base;
+
+  if (argc < 3) {
+    fprintf(stderr, "Usage: %s -[d/e] <key> <infile> <outfile>\n", argv[0]);
+    return -1;
+  }
+
+  enc = strcmp(argv[1], "-d");
+  kfd = argv[2];
+  payload = argv[3];
+  out = argv[4];
+
+  fd = open(kfd, O_RDONLY);
+  if (fd < 0)
+    return fd;
+  read(fd, &key, sizeof(uint64_t));
+  close(fd);
 
   fd = open(payload, O_RDONLY);
   if (fd < 0)
@@ -32,15 +47,10 @@ int main(int argc, char **argv) {
   base = mmap(0, size, PROT_READ, MAP_PRIVATE, fd, 0);
   close(fd);
 
-  fd = open(out, O_RDWR | O_CREAT, 0600);
-  if (fd < 0)
-    return fd;
-
   keys = calloc(1, sizeof(uint64_t) * KEY_ROUNDS);
   if (!keys)
     return -1;
 
-  key = 0x133457799BBCDFF1ULL;
   gen_subkeys(key, keys);
 
   for (int i = 0; i < KEY_ROUNDS; ++i) {
@@ -48,9 +58,13 @@ int main(int argc, char **argv) {
     dump_bits(keys[i], 48);
   }
 
+  fd = open(out, O_RDWR | O_CREAT, 0600);
+  if (fd < 0)
+    return fd;
+
   for (int i = 0; i < blks; ++i) {
-    enc = encrypt(base[i], key, keys);
-    write(fd, &enc, sizeof(uint64_t));
+    res = enc ? encrypt(base[i], key, keys) : decrypt(base[i], key, keys);
+    write(fd, &res, sizeof(uint64_t));
   }
 
   close(fd);

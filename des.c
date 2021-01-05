@@ -135,3 +135,19 @@ uint64_t encrypt(uint64_t msg, uint64_t key, uint64_t * keys) {
 
   return permute(right | (left >> 32), p_4, 64);
 }
+
+uint64_t decrypt(uint64_t msg, uint64_t key, uint64_t * keys) {
+  uint64_t left, right, i_perm, tmp;
+
+  i_perm = permute(msg, p_2, 64);
+  left = i_perm & (0xffffffffULL << 32);
+  right = (i_perm & 0xffffffffULL) << 32;
+
+  for (int i = KEY_ROUNDS - 1; i > -1; --i) {
+    tmp = left;
+    left = right;
+    right = tmp ^ f(right, keys[i]);
+  }
+
+  return permute(right | (left >> 32), p_4, 64);
+}

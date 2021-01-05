@@ -14,5 +14,6 @@ void gen_subkeys(uint64_t, uint64_t *);
 
 uint64_t f(uint64_t, uint64_t);
 uint64_t encrypt(uint64_t, uint64_t, uint64_t *);
+uint64_t decrypt(uint64_t, uint64_t, uint64_t *);
 
 #endif                          /* DES_H */
