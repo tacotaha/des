@@ -12,8 +12,9 @@
 int main(int argc, char **argv) {
   int size, fd;
   struct stat st;
-  uint64_t msg, key, *keys, *base = NULL;
+  uint64_t enc, msg, key, *keys, *base = NULL;
   char *payload = argv[argc > 1];
+
   fd = open(payload, O_RDONLY);
   if (fd < 0)
     return fd;
@@ -33,7 +34,7 @@ int main(int argc, char **argv) {
   if (!keys)
     return -1;
 
-  key = 0x8FFB3DD99EEA2CC8;
+  key = 0x133457799BBCDFF1ULL;
   gen_subkeys(key, keys);
 
   for (int i = 0; i < KEY_ROUNDS; ++i) {
@@ -41,8 +42,10 @@ int main(int argc, char **argv) {
     dump_bits(keys[i], 48);
   }
 
-  msg = 0xF7B3D591E6A2C480ULL;
-  encrypt(msg, key, keys);
+  msg = 0x123456789ABCDEFULL;
+  enc = encrypt(msg, key, keys);
+
+  printf("Encrypted = 0x%lx\n", enc);
 
   free(keys);
 
